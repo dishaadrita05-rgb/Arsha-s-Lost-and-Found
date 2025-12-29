@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card">
+  <h2>Login</h2>
+
+  <form method="post" action="/login">
+    <label>Phone</label>
+    <input name="phone" placeholder="e.g., 017xxxxxxxx" required />
+
+    <label>Password</label>
+    <input name="password" type="password" required />
+
+    <button type="submit">Login</button>
+  </form>
+
+  <p class="sub">No account? <a href="/register">Register</a></p>
+</div>
+
+{% endblock %}

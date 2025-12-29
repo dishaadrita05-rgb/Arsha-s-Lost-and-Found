@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card">
+  <h2>Submit a report</h2>
+  <p class="sub">Logged in as <b>{{ user.name }}</b>. Create a Lost or Found report below.</p>
+
+  <div class="card" style="margin: 12px 0 0; padding: 12px;">
+    <h3 style="margin-top:0;">Tips for better matching</h3>
+    <ul class="clean">
+      <li>Add <b>item type</b> + <b>color</b> (example: “transparent umbrella”, “black wallet”).</li>
+      <li>Include <b>brand/model</b> if any (Samsung A52, iPhone 13, JBL, HP, Dell).</li>
+      <li>Mention <b>unique marks</b> (sticker, scratch, engraving, broken corner).</li>
+      <li>For claims, use proof text — <b>no phone/email</b>. Office verifies identity.</li>
+    </ul>
+  </div>
+
+  <form method="post" action="/submit" style="margin-top: 12px;">
+    <label>Type</label>
+    <select name="kind" required>
+      <option value="lost">Lost</option>
+      <option value="found">Found</option>
+    </select>
+
+    <label>Title</label>
+    <input name="title" placeholder="e.g., Lost black wallet / Found transparent umbrella" required />
+
+    <label>Description</label>
+    <textarea name="description" rows="4" placeholder="Add details: brand, unique marks, contents..." required></textarea>
+
+    <label>Location (text)</label>
+    <input name="location_text" placeholder="e.g., New Market gate 2" required />
+
+    <label>Event time (optional)</label>
+    <input name="event_time" type="datetime-local" />
+
+    <!-- Found-only fields -->
+    <div id="foundOnlyFields" style="display:none; margin-top: 10px;">
+      <div class="card" style="margin:0; padding: 12px;">
+        <h3 style="margin-top:0;">Found-only details</h3>
+
+        <label>Handover location</label>
+        <input name="handover_location" placeholder="e.g., New Market security desk / reception" />
+
+        <label>Contact info (private)</label>
+        <input name="contact_info" placeholder="e.g., 017xx... or email (hidden until approval)" />
+
+        <p class="sub">Your contact will be shown only after you approve a claim.</p>
+      </div>
+    </div>
+
+    <button type="submit">Submit</button>
+  </form>
+</div>
+
+<script>
+  (function () {
+    const kindSelect = document.querySelector('select[name="kind"]');
+    const foundFields = document.getElementById("foundOnlyFields");
+    if (!kindSelect || !foundFields) return;
+
+    function refresh() {
+      foundFields.style.display = (kindSelect.value === "found") ? "block" : "none";
+    }
+
+    kindSelect.addEventListener("change", refresh);
+    refresh();
+  })();
+</script>
+
+<div class="grid">
+  <div class="card">
+    <h2>Recent Lost</h2>
+    <ul class="clean">
+      {% for r in lost %}
+        <li><a href="/report/{{ r.id }}"><b>#{{ r.id }}</b> — {{ r.title }}</a></li>
+      {% else %}
+        <li>No lost reports yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>Recent Found</h2>
+    <ul class="clean">
+      {% for r in found %}
+        <li><a href="/report/{{ r.id }}"><b>#{{ r.id }}</b> — {{ r.title }}</a></li>
+      {% else %}
+        <li>No found reports yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+{% endblock %}

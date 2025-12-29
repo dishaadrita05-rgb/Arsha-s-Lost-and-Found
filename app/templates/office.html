@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card">
+  <h2>Office Dashboard</h2>
+  <p class="sub">Disputes + quick access to claim details (office only).</p>
+</div>
+
+<div class="card">
+  <h3>Recent disputes</h3>
+
+  <ul class="clean">
+    {% for d in disputes %}
+      <li>
+        <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+          <div>
+            <b>Dispute #{{ d.id }}</b>
+            <span class="sub">• {{ d.created_at }}</span>
+          </div>
+          <div>
+            <a href="/office/claim/{{ d.claim_id }}">Open claim #{{ d.claim_id }}</a>
+            {% if d.claim_status %}
+              {% if d.claim_status == "approved" %}
+                <span class="badge badge-ok">APPROVED</span>
+              {% elif d.claim_status == "rejected" %}
+                <span class="badge badge-danger">REJECTED</span>
+              {% else %}
+                <span class="badge badge-warn">PENDING</span>
+              {% endif %}
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="sub" style="margin-top:8px;">
+          <b>Reporter:</b>
+          {{ d.reporter_name if d.reporter_name else "—" }}
+          {% if d.reporter_phone %} — {{ d.reporter_phone }}{% endif %}
+          {% if d.reporter_user_id %} (user_id {{ d.reporter_user_id }}){% endif %}
+        </div>
+
+        <div class="sub" style="margin-top:8px;">
+          <b>Lost:</b> #{{ d.lost_report_id }} — {{ d.lost_title or "" }}
+          <br />
+          <b>Found:</b> #{{ d.found_report_id }} — {{ d.found_title or "" }}
+        </div>
+
+        <pre class="mono" style="margin-top:10px;">{{ d.reason }}</pre>
+      </li>
+    {% else %}
+      <li>No disputes yet.</li>
+    {% endfor %}
+  </ul>
+</div>
+
+{% endblock %}

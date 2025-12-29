@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card">
+  <h2>Claim #{{ claim.id }}</h2>
+
+  <div class="meta">
+    <div>
+      <b>Status:</b>
+      {% if claim.status == "approved" %}
+        <span class="badge badge-ok">APPROVED</span>
+      {% elif claim.status == "rejected" %}
+        <span class="badge badge-danger">REJECTED</span>
+      {% else %}
+        <span class="badge badge-warn">PENDING</span>
+      {% endif %}
+      {% if claim.is_settled %}
+        <span class="badge closed">SETTLED</span>
+      {% endif %}
+    </div>
+    <div><b>Created:</b> {{ claim.created_at }}</div>
+  </div>
+
+  <div style="margin-top: 12px;">
+    <p><b>Lost report:</b> <a href="/report/{{ claim.lost_report_id }}">#{{ claim.lost_report_id }}</a> — {{ lost_title }}</p>
+    <p><b>Found report:</b> <a href="/report/{{ claim.found_report_id }}">#{{ claim.found_report_id }}</a> — {{ found_title }}</p>
+  </div>
+
+  {% if user.role == "office" %}
+    <div class="actions">
+      <form method="get" action="/office/claim/{{ claim.id }}">
+        <button type="submit" class="btn-warn">Open office view</button>
+      </form>
+    </div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h3>Proof text (masked)</h3>
+  <p class="sub">Phone/email/NID-like numbers are automatically hidden here.</p>
+  <pre class="mono">{{ masked_proof }}</pre>
+</div>
+
+<div class="card">
+  <h3>Report a dispute</h3>
+  <p class="sub">If you think this claim is incorrect, report it. Office will review and can see who reported.</p>
+
+  <div class="actions">
+    <form method="get" action="/dispute/{{ claim.id }}">
+      <button type="submit" class="btn-danger">Report dispute</button>
+    </form>
+  </div>
+
+  {% if dispute_count and dispute_count > 0 %}
+    <p class="sub" style="margin-top:10px;">
+      Current disputes on this claim: <b>{{ dispute_count }}</b>
+    </p>
+  {% endif %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card">
+  <h2>Claim request</h2>
+
+  <p><b>Lost report:</b> <a href="/report/{{ lost.id }}">#{{ lost.id }}</a></p>
+  <p><b>Found report:</b> <a href="/report/{{ found.id }}">#{{ found.id }}</a></p>
+
+  <div class="card" style="margin-top:12px;">
+    <h3>Office verification</h3>
+    <p class="sub">
+      Your account phone + NID will be stored for office verification.
+      They will not be shown publicly.
+    </p>
+    <p class="sub">
+      If your phone/NID is wrong, please log out and register again with correct info (we’ll improve this later with profile edit).
+    </p>
+  </div>
+
+  <h3>Proof (don’t put phone/email here)</h3>
+  <p class="sub">
+    Write 2–3 details only the real owner would know (contents, unique marks, exact brand/model, small scratches, etc.).
+  </p>
+
+  <form method="post" action="/claim/{{ lost.id }}/{{ found.id }}">
+    <label>Your proof</label>
+    <textarea
+      name="proof_text"
+      rows="7"
+      required
+      placeholder="Example: There is a small tear on the right edge, and inside has a BRAC card + student ID..."
+    ></textarea>
+
+    <button type="submit">Submit claim</button>
+  </form>
+
+  <p class="sub" style="margin-top:10px;">
+    Tip: If the item is already CLOSED/settled, claims are disabled.
+  </p>
+</div>
+
+{% endblock %}

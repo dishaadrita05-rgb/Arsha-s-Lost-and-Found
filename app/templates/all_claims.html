@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card">
+  <h2>All Claims</h2>
+  <p class="sub">Safe view for everyone (login required). No phone/NID is shown.</p>
+
+  <form method="get" action="/claims" class="grid" style="margin-top:12px;">
+    <div>
+      <label>Search</label>
+      <input name="q" value="{{ q }}" placeholder="Claim ID / Report ID / title keywords" />
+      <p class="sub" style="margin:6px 0 0;">Tip: type a number to jump to that claim/report.</p>
+    </div>
+
+    <div>
+      <label>Status</label>
+      <select name="status">
+        <option value="" {% if status=="" %}selected{% endif %}>All</option>
+        <option value="pending" {% if status=="pending" %}selected{% endif %}>Pending</option>
+        <option value="approved" {% if status=="approved" %}selected{% endif %}>Approved</option>
+        <option value="rejected" {% if status=="rejected" %}selected{% endif %}>Rejected</option>
+      </select>
+
+      <label style="margin-top:10px;">Settlement</label>
+      <select name="settled">
+        <option value="" {% if settled=="" %}selected{% endif %}>All</option>
+        <option value="open" {% if settled=="open" %}selected{% endif %}>Open only</option>
+        <option value="settled" {% if settled=="settled" %}selected{% endif %}>Settled only</option>
+      </select>
+
+      <button type="submit" style="margin-top:12px;">Filter</button>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <ul class="clean">
+    {% for c in claims %}
+      <li>
+        <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+          <div>
+            <b>Claim #{{ c.id }}</b>
+            {% if c.status == "approved" %}
+              <span class="badge badge-ok">APPROVED</span>
+            {% elif c.status == "rejected" %}
+              <span class="badge badge-danger">REJECTED</span>
+            {% else %}
+              <span class="badge badge-warn">PENDING</span>
+            {% endif %}
+
+            {% if c.is_settled %}
+              <span class="badge closed">SETTLED</span>
+            {% endif %}
+          </div>
+
+          <div class="sub">
+            {{ c.created_at }}
+            {% if c.dispute_count and c.dispute_count > 0 %}
+              • <b>Disputes:</b> {{ c.dispute_count }}
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="sub" style="margin-top:8px;">
+          Lost: <a href="/report/{{ c.lost_report_id }}">#{{ c.lost_report_id }}</a>
+          — {{ c.lost_title or "(deleted)" }}
+          <br />
+          Found: <a href="/report/{{ c.found_report_id }}">#{{ c.found_report_id }}</a>
+          — {{ c.found_title or "(deleted)" }}
+        </div>
+
+        <div class="actions">
+          <form method="get" action="/claims/{{ c.id }}">
+            <button type="submit">View claim</button>
+          </form>
+
+          <form method="get" action="/dispute/{{ c.id }}">
+            <button type="submit" class="btn-danger">Report dispute</button>
+          </form>
+
+          {% if user.role == "office" %}
+            <form method="get" action="/office/claim/{{ c.id }}">
+              <button type="submit" class="btn-warn">Office view</button>
+            </form>
+          {% endif %}
+        </div>
+      </li>
+    {% else %}
+      <li>No claims yet.</li>
+    {% endfor %}
+  </ul>
+</div>
+
+{% endblock %}

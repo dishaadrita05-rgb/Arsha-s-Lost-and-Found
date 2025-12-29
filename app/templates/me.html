@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card">
+  <h2>My Dashboard</h2>
+  <p class="sub">Your reports and claims (open + closed).</p>
+
+  <div class="grid" style="margin-top:12px;">
+    <div class="card" style="margin:0;">
+      <h3 style="margin-bottom:6px;">My reports</h3>
+      <p class="sub" style="margin:0;">
+        Lost: <b>{{ my_lost|length }}</b> • Found: <b>{{ my_found|length }}</b>
+      </p>
+    </div>
+    <div class="card" style="margin:0;">
+      <h3 style="margin-bottom:6px;">My claims</h3>
+      <p class="sub" style="margin:0;">
+        Total: <b>{{ my_claims|length }}</b>
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h2>My Lost</h2>
+    <ul class="clean">
+      {% for r in my_lost %}
+        <li>
+          <a href="/report/{{ r.id }}"><b>#{{ r.id }}</b></a>
+          — {{ r.title }}
+          {% if r.is_closed %}
+            <span class="badge closed">CLOSED</span>
+          {% endif %}
+        </li>
+      {% else %}
+        <li>No lost reports yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>My Found</h2>
+    <ul class="clean">
+      {% for r in my_found %}
+        <li>
+          <a href="/report/{{ r.id }}"><b>#{{ r.id }}</b></a>
+          — {{ r.title }}
+          {% if r.is_closed %}
+            <span class="badge closed">CLOSED</span>
+          {% endif %}
+        </li>
+      {% else %}
+        <li>No found reports yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+<div class="card">
+  <h2>My Claims</h2>
+  <ul class="clean">
+    {% for c in my_claims %}
+      <li>
+        <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+          <div>
+            <b>Claim #{{ c.id }}</b>
+            {% if c.status == "approved" %}
+              <span class="badge badge-ok">APPROVED</span>
+            {% elif c.status == "rejected" %}
+              <span class="badge badge-danger">REJECTED</span>
+            {% else %}
+              <span class="badge badge-warn">PENDING</span>
+            {% endif %}
+            {% if c.is_settled %}
+              <span class="badge closed">SETTLED</span>
+            {% endif %}
+          </div>
+          <div class="actions" style="margin-top:0;">
+            <form method="get" action="/claims/{{ c.id }}">
+              <button type="submit">View</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="sub" style="margin-top:8px;">
+          Lost: <a href="/report/{{ c.lost_report_id }}">#{{ c.lost_report_id }}</a>
+          • Found: <a href="/report/{{ c.found_report_id }}">#{{ c.found_report_id }}</a>
+        </div>
+      </li>
+    {% else %}
+      <li>No claims yet.</li>
+    {% endfor %}
+  </ul>
+</div>
+
+{% endblock %}

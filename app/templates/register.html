@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+
+{% if error %}
+  <div class="card">
+    <h2>Could not register</h2>
+    <p class="sub">{{ error }}</p>
+  </div>
+{% endif %}
+
+<div class="card">
+  <h2>Register</h2>
+
+  <form method="post" action="/register">
+    <label>Name</label>
+    <input name="name" placeholder="Your name" value="{{ name or '' }}" required />
+
+    <label>Phone (this will be your login ID)</label>
+    <input name="phone" placeholder="e.g., 017xxxxxxxx" value="{{ phone or '' }}" required />
+
+    <label>NID number (13 or 18 digits)</label>
+    <input name="nid" placeholder="digits only" value="{{ nid or '' }}" required />
+
+    <label>Password</label>
+    <input name="password" type="password" required />
+
+    <button type="submit">Create account</button>
+  </form>
+
+  <p class="sub">Already have an account? <a href="/login">Login</a></p>
+</div>
+
+{% endblock %}

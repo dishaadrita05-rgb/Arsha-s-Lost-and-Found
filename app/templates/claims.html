@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card">
+  <h2>Manage claims for Found #{{ found.id }}</h2>
+  <p class="sub">Only you can see this page using your manage code.</p>
+
+  {% if found.is_closed %}
+    <p class="sub"><b>Status:</b> This Found report is <span class="badge closed">CLOSED</span>. Claims are disabled.</p>
+  {% endif %}
+</div>
+
+{% for c in claims %}
+  <div class="card">
+    <h3 style="margin-bottom: 6px;">
+      Claim #{{ c.id }}
+      {% if c.status == "approved" %}
+        <span class="badge badge-ok">APPROVED</span>
+      {% elif c.status == "rejected" %}
+        <span class="badge badge-danger">REJECTED</span>
+      {% else %}
+        <span class="badge badge-warn">PENDING</span>
+      {% endif %}
+      {% if c.is_settled %}
+        <span class="badge closed">SETTLED</span>
+      {% endif %}
+    </h3>
+
+    {% set lr = lost_reports[c.lost_report_id] %}
+    <p class="sub" style="margin-top:0;">
+      Lost report:
+      <a href="/report/{{ lr.id }}">#{{ lr.id }}</a>
+      — {{ lr.title }}
+    </p>
+
+    <div class="actions">
+      <form method="get" action="/claims/{{ c.id }}">
+        <button type="submit">Open safe claim view</button>
+      </form>
+    </div>
+
+    <p><b>Proof (masked):</b></p>
+    <pre class="mono">{{ c.proof_text_masked }}</pre>
+    <p class="sub">Phone/email/NID-like numbers are hidden automatically.</p>
+
+    {% if not found.is_closed %}
+      <div class="actions">
+        <form method="post" action="/manage/claim/{{ c.id }}/approve">
+          <input type="hidden" name="token" value="{{ token }}" />
+          <button type="submit" class="btn-ok" {% if c.is_settled %}disabled{% endif %}>Approve</button>
+        </form>
+
+        <form method="post" action="/manage/claim/{{ c.id }}/reject">
+          <input type="hidden" name="token" value="{{ token }}" />
+          <button type="submit" class="btn-danger" {% if c.is_settled %}disabled{% endif %}>Reject</button>
+        </form>
+
+        <form method="post" action="/manage/claim/{{ c.id }}/settle">
+          <input type="hidden" name="token" value="{{ token }}" />
+          <button type="submit" class="btn-warn"
+            {% if c.status != "approved" or c.is_settled %}disabled{% endif %}>
+            Mark settled
+          </button>
+        </form>
+      </div>
+
+      {% if c.is_settled %}
+        <p class="sub"><b>Settled:</b> Handover completed. This Found report should now be closed.</p>
+      {% endif %}
+    {% else %}
+      <p class="sub">This report is closed, so actions are disabled.</p>
+    {% endif %}
+
+  </div>
+{% else %}
+  <div class="card"><p>No claims yet.</p></div>
+{% endfor %}
+
+{% endblock %}

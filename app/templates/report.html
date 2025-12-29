@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block content %}
+
+{% if report.duplicate_of %}
+  <div class="card">
+    <h2>Possible duplicate</h2>
+    <p>
+      This report looks very similar to
+      <a href="/report/{{ report.duplicate_of }}">Report #{{ report.duplicate_of }}</a>.
+    </p>
+  </div>
+{% endif %}
+
+{% if report.is_closed %}
+  <div class="card">
+    <h2>Status: <span class="badge closed">CLOSED</span></h2>
+    <p class="sub">This report has been settled. New claims are disabled.</p>
+  </div>
+{% endif %}
+
+{% if report.kind == "found" and created %}
+  <div class="card">
+    <h2>Important: Manage code</h2>
+    <p>Save this code. You need it to approve/settle claims (keep it private).</p>
+
+    <p class="mono">{{ report.manage_token }}</p>
+
+    <p class="sub">
+      <a href="/manage/{{ report.id }}?token={{ report.manage_token }}">Open manage claims</a>
+    </p>
+  </div>
+{% endif %}
+
+<div class="card">
+  <h2>Report #{{ report.id }} ({{ report.kind }})</h2>
+  <div class="meta">
+    <div><b>Title:</b> {{ masked_title }}</div>
+    <div><b>Location:</b> {{ masked_loc }}</div>
+    <div><b>Event time:</b> {{ report.event_time if report.event_time else "—" }}</div>
+    <div><b>Created:</b> {{ report.created_at }}</div>
+  </div>
+
+  <h3>Description</h3>
+  <p class="mono">{{ masked_desc }}</p>
+
+  <h3>Extracted</h3>
+  <ul class="clean">
+    <li><b>Item type:</b> {{ report_extracted.item_type if report_extracted.item_type else "—" }}</li>
+    <li><b>Colors:</b> {{ (report_extracted.colors | join(", ")) if report_extracted.colors else "—" }}</li>
+    <li><b>Brand:</b> {{ report_extracted.brand if report_extracted.brand else "—" }}</li>
+    <li><b>Unique marks:</b> {{ (report_extracted.unique_marks | join(", ")) if report_extracted.unique_marks else "—" }}</li>
+  </ul>
+</div>
+
+{% if question %}
+  <div class="card">
+    <h2>One clarifying question</h2>
+    <p class="sub">{{ question.text }}</p>
+    <form method="post" action="/answer/{{ report.id }}">
+      <input type="hidden" name="key" value="{{ question.key }}" />
+      <input name="answer" placeholder="Your answer..." required />
+      <button type="submit">Submit answer</button>
+    </form>
+  </div>
+{% elif report.clarify_key %}
+  <div class="card">
+    <h2>Clarification saved</h2>
+    <p><b>{{ report.clarify_key }}</b>: {{ report.clarify_answer }}</p>
+  </div>
+{% endif %}
+
+<div class="card">
+  <h2>Top matches</h2>
+
+  {% for m in matches %}
+    <div class="match">
+      <div class="match-head">
+        <div>
+          <b>Candidate:</b>
+          <a href="/report/{{ m.other_id }}">Report #{{ m.other_id }}</a>
+        </div>
+        <div class="score">Score: {{ "%.3f"|format(m.score) }}</div>
+      </div>
+
+      <ul>
+        {% for r in m.reasons %}
+          <li>{{ r }}</li>
+        {% endfor %}
+      </ul>
+
+      {% if report.kind == "lost" %}
+        {% if report.is_closed %}
+          <p class="sub">This lost report is closed. Claims are disabled.</p>
+        {% else %}
+          <div class="actions">
+            <form method="get" action="/claim/{{ report.id }}/{{ m.other_id }}">
+              <button type="submit">Claim this match</button>
+            </form>
+          </div>
+        {% endif %}
+
+        {% if approved_info and approved_info.get(m.other_id) %}
+          <div class="card" style="margin-top: 10px;">
+            <h3>Approved pickup details</h3>
+            <p class="sub">
+              Claim:
+              <a href="/claims/{{ approved_info.get(m.other_id).claim_id }}">View claim #{{ approved_info.get(m.other_id).claim_id }}</a>
+            </p>
+            <p><b>Handover:</b> {{ approved_info.get(m.other_id).handover_location }}</p>
+            <p><b>Contact:</b> {{ approved_info.get(m.other_id).contact_info }}</p>
+
+            {% if approved_info.get(m.other_id).found_is_closed %}
+              <p class="sub"><b>Note:</b> This match has been settled/closed.</p>
+            {% endif %}
+          </div>
+
+          <div class="card" style="margin-top: 10px;">
+            <h3>Report false claim</h3>
+            <p class="sub">If you think this claim is wrong, report it. Office will review.</p>
+
+            <form method="post" action="/dispute/{{ approved_info.get(m.other_id).claim_id }}">
+              <textarea name="reason" rows="3" required
+                placeholder="Why do you think this is a false claim?"></textarea>
+              <button type="submit" class="btn-danger">Report</button>
+            </form>
+          </div>
+        {% endif %}
+      {% endif %}
+    </div>
+  {% else %}
+    <p>No candidates yet.</p>
+  {% endfor %}
+</div>
+
+{% endblock %}

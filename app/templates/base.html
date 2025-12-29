@@ -1,0 +1,104 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ title if title else "Lost & Found Matcher" }}</title>
+  <link rel="stylesheet" href="/static/style.css" />
+
+  <script>
+    (function () {
+      try {
+        const saved = localStorage.getItem("theme");
+        if (saved) document.documentElement.dataset.theme = saved;
+      } catch (e) {}
+    })();
+  </script>
+</head>
+
+<body>
+  <div class="container">
+
+    <header class="topbar card">
+      <div class="brand">
+        <h1 class="brand-title"><a href="/">Lost &amp; Found Matcher</a></h1>
+        <p class="sub">Submit reports, get matches, claim items, and settle securely.</p>
+
+        {% if user %}
+          <div class="whoami">
+            <span class="badge">👤 {{ user.name }}</span>
+            {% if user.role == "office" %}
+              <span class="badge badge-warn">🏢 OFFICE</span>
+            {% endif %}
+          </div>
+
+          <nav class="nav">
+            <a class="navlink" href="/">🏠 Home</a>
+            <a class="navlink" href="/me">📌 My Dashboard</a>
+            <a class="navlink" href="/claims">🧾 All Claims</a>
+            {% if user.role == "office" %}
+              <a class="navlink" href="/office">🛡️ Office</a>
+            {% endif %}
+          </nav>
+
+          <form method="post" action="/logout" class="logout-form">
+            <button type="submit" class="btn-warn">Logout</button>
+          </form>
+        {% else %}
+          <nav class="nav">
+            <a class="navlink" href="/login">Login</a>
+            <a class="navlink" href="/register">Register</a>
+          </nav>
+        {% endif %}
+      </div>
+
+      <button id="themeToggle" class="theme-toggle" type="button" aria-label="Toggle theme">
+        🌙
+      </button>
+    </header>
+
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer sub">
+      <p>
+        Privacy: phone/NID are never shown publicly. Only office can view verification details.
+      </p>
+    </footer>
+  </div>
+
+<script>
+  (function () {
+    const btn = document.getElementById("themeToggle");
+    if (!btn) return;
+
+    function systemTheme() {
+      return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light";
+    }
+
+    function getTheme() {
+      return document.documentElement.dataset.theme || systemTheme();
+    }
+
+    function applyTheme(theme) {
+      document.documentElement.dataset.theme = theme;
+      try { localStorage.setItem("theme", theme); } catch (e) {}
+      btn.textContent = theme === "dark" ? "☀️" : "🌙";
+      btn.title = theme === "dark" ? "Switch to light" : "Switch to dark";
+    }
+
+    let saved = null;
+    try { saved = localStorage.getItem("theme"); } catch (e) {}
+    applyTheme(saved || systemTheme());
+
+    btn.addEventListener("click", function () {
+      applyTheme(getTheme() === "dark" ? "light" : "dark");
+    });
+  })();
+</script>
+
+</body>
+</html>

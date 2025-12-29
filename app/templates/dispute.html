@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card">
+  <h2>Report dispute for Claim #{{ claim.id }}</h2>
+  <p class="sub">
+    Please do not include phone/email here. Just explain why you think the claim is incorrect.
+    Office will see who reported.
+  </p>
+
+  <div class="meta" style="margin-top:10px;">
+    <div><b>Status:</b> {{ claim.status }}</div>
+    <div><b>Lost:</b> <a href="/report/{{ claim.lost_report_id }}">#{{ claim.lost_report_id }}</a> — {{ lost_title }}</div>
+    <div><b>Found:</b> <a href="/report/{{ claim.found_report_id }}">#{{ claim.found_report_id }}</a> — {{ found_title }}</div>
+  </div>
+</div>
+
+<div class="card">
+  <form method="post" action="/dispute/{{ claim.id }}">
+    <label>Reason</label>
+    <textarea name="reason" rows="7" required
+      placeholder="Example: Proof doesn’t match item details, location/time inconsistent, claimant description is generic, etc."></textarea>
+
+    <button type="submit" class="btn-danger">Submit dispute</button>
+  </form>
+
+  <p class="sub" style="margin-top:10px;">
+    After submitting, you will return to the claim page.
+  </p>
+</div>
+
+{% endblock %}
