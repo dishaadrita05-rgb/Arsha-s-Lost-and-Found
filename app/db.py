@@ -1,6 +1,4 @@
 # app/db.py
-from __future__ import annotations
-
 import sqlite3
 from pathlib import Path
 from typing import Optional, Dict, Any, List
@@ -30,6 +28,9 @@ def init_db() -> None:
     con = connect()
     cur = con.cursor()
 
+    # --------------------
+    # users table (NEW)
+    # --------------------
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS users (
@@ -46,6 +47,9 @@ def init_db() -> None:
     )
     con.commit()
 
+    # --------------------
+    # reports table
+    # --------------------
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS reports (
@@ -66,13 +70,18 @@ def init_db() -> None:
     )
     con.commit()
 
+    # report migrations (safe auto-migrate)
     report_migrations = [
         ("handover_location", "ALTER TABLE reports ADD COLUMN handover_location TEXT"),
         ("contact_info", "ALTER TABLE reports ADD COLUMN contact_info TEXT"),
         ("manage_token", "ALTER TABLE reports ADD COLUMN manage_token TEXT"),
+
+        # closing workflow
         ("is_closed", "ALTER TABLE reports ADD COLUMN is_closed INTEGER DEFAULT 0"),
         ("closed_at", "ALTER TABLE reports ADD COLUMN closed_at TEXT"),
         ("closed_claim_id", "ALTER TABLE reports ADD COLUMN closed_claim_id INTEGER"),
+
+        # NEW: ownership
         ("owner_user_id", "ALTER TABLE reports ADD COLUMN owner_user_id INTEGER"),
     ]
     for col, ddl in report_migrations:
@@ -80,6 +89,9 @@ def init_db() -> None:
             cur.execute(ddl)
     con.commit()
 
+    # --------------------
+    # claims table
+    # --------------------
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS claims (
@@ -94,13 +106,19 @@ def init_db() -> None:
     )
     con.commit()
 
+    # claim migrations
     claim_migrations = [
+        # office-only snapshot columns
         ("claimer_name", "ALTER TABLE claims ADD COLUMN claimer_name TEXT"),
         ("claimer_phone", "ALTER TABLE claims ADD COLUMN claimer_phone TEXT"),
         ("claimer_nid", "ALTER TABLE claims ADD COLUMN claimer_nid TEXT"),
         ("office_note", "ALTER TABLE claims ADD COLUMN office_note TEXT"),
+
+        # settlement tracking
         ("is_settled", "ALTER TABLE claims ADD COLUMN is_settled INTEGER DEFAULT 0"),
         ("settled_at", "ALTER TABLE claims ADD COLUMN settled_at TEXT"),
+
+        # link claim to logged-in account
         ("claimer_user_id", "ALTER TABLE claims ADD COLUMN claimer_user_id INTEGER"),
     ]
     for col, ddl in claim_migrations:
@@ -108,6 +126,9 @@ def init_db() -> None:
             cur.execute(ddl)
     con.commit()
 
+    # --------------------
+    # disputes table
+    # --------------------
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS disputes (
@@ -120,10 +141,9 @@ def init_db() -> None:
     )
     con.commit()
 
+    # disputes migrations
     dispute_migrations = [
         ("reporter_user_id", "ALTER TABLE disputes ADD COLUMN reporter_user_id INTEGER"),
-        ("reporter_name", "ALTER TABLE disputes ADD COLUMN reporter_name TEXT"),
-        ("reporter_phone", "ALTER TABLE disputes ADD COLUMN reporter_phone TEXT"),
     ]
     for col, ddl in dispute_migrations:
         if not _column_exists(con, "disputes", col):
@@ -132,6 +152,10 @@ def init_db() -> None:
 
     con.close()
 
+
+# ========================
+# Users
+# ========================
 
 def create_user(
     name: str,
@@ -181,6 +205,18 @@ def set_user_role(user_id: int, role: str) -> None:
     con.close()
 
 
+def update_user_password_hash(user_id: int, new_password_hash: str) -> None:
+    con = connect()
+    cur = con.cursor()
+    cur.execute("UPDATE users SET password_hash=? WHERE id=?", (new_password_hash, user_id))
+    con.commit()
+    con.close()
+
+
+# ========================
+# Reports
+# ========================
+
 def insert_report(
     kind: str,
     title: str,
@@ -195,23 +231,10 @@ def insert_report(
     cur = con.cursor()
     cur.execute(
         """
-        INSERT INTO reports(
-            kind,title,description,location_text,event_time,created_at,
-            extracted_json,duplicate_of,owner_user_id
-        )
+        INSERT INTO reports(kind,title,description,location_text,event_time,created_at,extracted_json,duplicate_of,owner_user_id)
         VALUES(?,?,?,?,?,?,?,?,?)
         """,
-        (
-            kind,
-            title,
-            description,
-            location_text,
-            event_time,
-            now_utc_iso(),
-            extracted_json,
-            duplicate_of,
-            owner_user_id,
-        ),
+        (kind, title, description, location_text, event_time, now_utc_iso(), extracted_json, duplicate_of, owner_user_id),
     )
     con.commit()
     report_id = int(cur.lastrowid)
@@ -229,6 +252,9 @@ def get_report(report_id: int) -> Optional[Dict[str, Any]]:
 
 
 def list_reports(kind: Optional[str] = None, include_closed: bool = False) -> List[Dict[str, Any]]:
+    """
+    By default, closed reports are hidden from lists (homepage, candidates).
+    """
     con = connect()
     cur = con.cursor()
 
@@ -255,18 +281,28 @@ def list_reports_for_user(user_id: int, kind: Optional[str] = None, include_clos
     con = connect()
     cur = con.cursor()
 
-    where = ["owner_user_id=?"]
-    params: List[Any] = [user_id]
-
     if kind:
-        where.append("kind=?")
-        params.append(kind)
-
-    if not include_closed:
-        where.append("(is_closed IS NULL OR is_closed=0)")
-
-    sql = "SELECT * FROM reports WHERE " + " AND ".join(where) + " ORDER BY id DESC"
-    cur.execute(sql, tuple(params))
+        if include_closed:
+            cur.execute(
+                "SELECT * FROM reports WHERE owner_user_id=? AND kind=? ORDER BY id DESC",
+                (user_id, kind),
+            )
+        else:
+            cur.execute(
+                "SELECT * FROM reports WHERE owner_user_id=? AND kind=? AND (is_closed IS NULL OR is_closed=0) ORDER BY id DESC",
+                (user_id, kind),
+            )
+    else:
+        if include_closed:
+            cur.execute(
+                "SELECT * FROM reports WHERE owner_user_id=? ORDER BY id DESC",
+                (user_id,),
+            )
+        else:
+            cur.execute(
+                "SELECT * FROM reports WHERE owner_user_id=? AND (is_closed IS NULL OR is_closed=0) ORDER BY id DESC",
+                (user_id,),
+            )
 
     rows = [dict(r) for r in cur.fetchall()]
     con.close()
@@ -314,6 +350,10 @@ def close_report(report_id: int, closed_claim_id: Optional[int] = None) -> None:
     con.close()
 
 
+# ========================
+# Claims
+# ========================
+
 def create_claim(
     lost_id: int,
     found_id: int,
@@ -323,6 +363,11 @@ def create_claim(
     claimer_phone: str = "",
     claimer_nid: str = "",
 ) -> int:
+    """
+    We store BOTH:
+      - claimer_user_id (link to account)
+      - snapshot fields (name/phone/nid) for office audit later
+    """
     con = connect()
     cur = con.cursor()
     cur.execute(
@@ -372,86 +417,10 @@ def list_claims_for_user(user_id: int) -> List[Dict[str, Any]]:
     return rows
 
 
-def list_claims_all(
-    limit: int = 500,
-    q: Optional[str] = None,
-    status: Optional[str] = None,
-    settled: Optional[str] = None,
-) -> List[Dict[str, Any]]:
-    con = connect()
-    cur = con.cursor()
-
-    sql = """
-    SELECT
-      c.*,
-      lr.title AS lost_title,
-      fr.title AS found_title,
-      (SELECT COUNT(1) FROM disputes d WHERE d.claim_id = c.id) AS dispute_count
-    FROM claims c
-    LEFT JOIN reports lr ON lr.id = c.lost_report_id
-    LEFT JOIN reports fr ON fr.id = c.found_report_id
-    """
-    where: List[str] = []
-    params: List[Any] = []
-
-    if status in ("pending", "approved", "rejected"):
-        where.append("c.status=?")
-        params.append(status)
-
-    if settled == "settled":
-        where.append("c.is_settled=1")
-    elif settled == "open":
-        where.append("(c.is_settled IS NULL OR c.is_settled=0)")
-
-    q_clean = (q or "").strip()
-    if q_clean:
-        if q_clean.isdigit():
-            n = int(q_clean)
-            where.append("(c.id=? OR c.lost_report_id=? OR c.found_report_id=?)")
-            params.extend([n, n, n])
-        else:
-            like = f"%{q_clean.lower()}%"
-            where.append("(lower(lr.title) LIKE ? OR lower(fr.title) LIKE ?)")
-            params.extend([like, like])
-
-    if where:
-        sql += " WHERE " + " AND ".join(where)
-
-    sql += " ORDER BY c.id DESC LIMIT ?"
-    params.append(int(limit))
-
-    cur.execute(sql, tuple(params))
-    rows = [dict(r) for r in cur.fetchall()]
-    con.close()
-    return rows
-
-
 def get_claim(claim_id: int) -> Optional[Dict[str, Any]]:
     con = connect()
     cur = con.cursor()
     cur.execute("SELECT * FROM claims WHERE id=?", (claim_id,))
-    row = cur.fetchone()
-    con.close()
-    return dict(row) if row else None
-
-
-def get_claim_with_titles(claim_id: int) -> Optional[Dict[str, Any]]:
-    con = connect()
-    cur = con.cursor()
-    cur.execute(
-        """
-        SELECT
-          c.*,
-          lr.title AS lost_title,
-          fr.title AS found_title,
-          (SELECT COUNT(1) FROM disputes d WHERE d.claim_id = c.id) AS dispute_count
-        FROM claims c
-        LEFT JOIN reports lr ON lr.id = c.lost_report_id
-        LEFT JOIN reports fr ON fr.id = c.found_report_id
-        WHERE c.id=?
-        """,
-        (claim_id,),
-    )
     row = cur.fetchone()
     con.close()
     return dict(row) if row else None
@@ -504,21 +473,16 @@ def has_settled_claim_for_found(found_id: int) -> bool:
     return bool(row)
 
 
-def create_dispute(
-    claim_id: int,
-    reason: str,
-    reporter_user_id: Optional[int] = None,
-    reporter_name: str = "",
-    reporter_phone: str = "",
-) -> int:
+# ========================
+# Disputes
+# ========================
+
+def create_dispute(claim_id: int, reason: str, reporter_user_id: Optional[int] = None) -> int:
     con = connect()
     cur = con.cursor()
     cur.execute(
-        """
-        INSERT INTO disputes(claim_id,reason,created_at,reporter_user_id,reporter_name,reporter_phone)
-        VALUES(?,?,?,?,?,?)
-        """,
-        (claim_id, reason, now_utc_iso(), reporter_user_id, reporter_name, reporter_phone),
+        "INSERT INTO disputes(claim_id,reason,created_at,reporter_user_id) VALUES(?,?,?,?)",
+        (claim_id, reason, now_utc_iso(), reporter_user_id),
     )
     con.commit()
     did = int(cur.lastrowid)
@@ -530,32 +494,6 @@ def list_disputes_for_claim(claim_id: int) -> List[Dict[str, Any]]:
     con = connect()
     cur = con.cursor()
     cur.execute("SELECT * FROM disputes WHERE claim_id=? ORDER BY id DESC", (claim_id,))
-    rows = [dict(r) for r in cur.fetchall()]
-    con.close()
-    return rows
-
-
-def list_disputes_all(limit: int = 200) -> List[Dict[str, Any]]:
-    con = connect()
-    cur = con.cursor()
-    cur.execute(
-        """
-        SELECT
-          d.*,
-          c.status AS claim_status,
-          c.lost_report_id,
-          c.found_report_id,
-          lr.title AS lost_title,
-          fr.title AS found_title
-        FROM disputes d
-        LEFT JOIN claims c ON c.id = d.claim_id
-        LEFT JOIN reports lr ON lr.id = c.lost_report_id
-        LEFT JOIN reports fr ON fr.id = c.found_report_id
-        ORDER BY d.id DESC
-        LIMIT ?
-        """,
-        (int(limit),),
-    )
     rows = [dict(r) for r in cur.fetchall()]
     con.close()
     return rows
