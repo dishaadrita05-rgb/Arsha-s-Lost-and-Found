@@ -1,13 +1,17 @@
 {
-  "name": "Arsha’s Lost and Found (FastAPI)",
+  "name": "Arsha's Lost & Found (FastAPI)",
   "image": "mcr.microsoft.com/devcontainers/python:3.11",
-  "postCreateCommand": "python -m pip install --upgrade pip && python -m pip install -r requirements.txt",
-  "postStartCommand": "bash -lc \"nohup python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload >/tmp/uvicorn.log 2>&1 &\"",
+  "postCreateCommand": "python -m pip install -U pip && python -m pip install -r requirements.txt",
   "forwardPorts": [8000],
   "portsAttributes": {
     "8000": {
-      "label": "Lost & Found App",
+      "label": "Lost & Found Web",
       "onAutoForward": "openPreview"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-python.python", "ms-python.vscode-pylance"]
     }
   }
 }
