@@ -1,21 +1,14 @@
-# Arsha’s Lost and Found (Lost & Found Matcher)
+# Arsha’s Lost & Found (FastAPI)
 
-One-click try:
+A Lost & Found web app that lets users submit Lost/Found reports and automatically suggests matches.
+Users can claim matches, founders can approve/reject, and the system supports settlement + disputes.
 
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/dishaadrita05-rgb/Arsha-s-Lost-and-Found?quickstart=1)
-[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/dishaadrita05-rgb/Arsha-s-Lost-and-Found)
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/dishaadrita05-rgb/Arsha-s-Lost-and-Found)
+## One-click try
 
-## What this project is
-A FastAPI + Jinja2 web app for Lost & Found reporting:
-- Login required (phone-based login)
-- Submit Lost/Found reports
-- Auto-match Lost vs Found using text similarity + extracted attributes (item, colors, brand, identifiers)
-- Claim flow: Lost users can claim Found reports with proof text (no phone/email in proof)
-- Founder manage page: approve/reject claims + mark settled
-- Office-only claim details page (shows sensitive claimant details)
+### ✅ GitHub Codespaces
+Open the repo → **Code** → **Codespaces** → **Create codespace**.  
+(If `.devcontainer/` exists, it auto-installs dependencies.)
 
-## Run locally
-### 1) Install dependencies
+Then run:
 ```bash
-pip install -r requirements.txt
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
