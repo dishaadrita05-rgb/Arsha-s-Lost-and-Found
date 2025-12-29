@@ -22,7 +22,8 @@
     <input name="nid" placeholder="digits only" value="{{ nid or '' }}" required />
 
     <label>Password</label>
-    <input name="password" type="password" required />
+    <input name="password" type="password" minlength="6" maxlength="72" autocomplete="new-password" required />
+    <p class="sub">Password limit: 72 bytes (bcrypt limit). If you use emoji/Bangla, keep it shorter.</p>
 
     <button type="submit">Create account</button>
   </form>
