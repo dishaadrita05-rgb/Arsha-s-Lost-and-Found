@@ -1,109 +1,77 @@
 #!/usr/bin/env python3
 """
-Promote a user to OFFICE role in the SQLite database.
+Make an existing user an office user (role='office').
 
-Works even on Windows where the sqlite3 CLI is not installed, because it uses
-Python's built-in sqlite3 module.
-
-Usage (run from repo root):
-  python scripts/make_office.py --phone 017xxxxxxxx
-  python scripts/make_office.py --user-id 1
-  python scripts/make_office.py --phone 017xxxxxxxx --db lostfound.sqlite3
+Why this exists:
+- Many Windows machines don't have the sqlite3 CLI installed.
+- But Python can still edit the SQLite DB using the built-in sqlite3 module.
 """
 
 from __future__ import annotations
 
 import argparse
 import sqlite3
-import sys
 from pathlib import Path
 
 
-def open_db_readwrite_no_create(db_path: Path) -> sqlite3.Connection:
-    """
-    Open SQLite DB in read-write mode without creating a new file.
-    If the DB doesn't exist, raise a helpful error.
-    """
-    # Using URI mode prevents accidental creation of an empty DB file.
-    uri = f"file:{db_path.as_posix()}?mode=rw"
-    try:
-        return sqlite3.connect(uri, uri=True)
-    except sqlite3.OperationalError as e:
-        raise SystemExit(
-            f"[ERROR] Cannot open DB: {db_path}\n"
-            f"Reason: {e}\n\n"
-            f"Fix:\n"
-            f"  - Run the app once to create the database and tables, or\n"
-            f"  - Point to the correct DB with --db\n"
-        )
+def normalize_phone(phone: str) -> str:
+    # Simple normalization: keep digits, keep leading 0 if present
+    digits = "".join(ch for ch in (phone or "") if ch.isdigit())
+    # If someone types 88017..., reduce to last 11 digits if it looks like BD phone
+    if len(digits) > 11 and digits.endswith(digits[-11:]):
+        digits = digits[-11:]
+    return digits
 
 
-def table_exists(con: sqlite3.Connection, table_name: str) -> bool:
+def main() -> int:
+    root = Path(__file__).resolve().parent.parent
+    default_db = root / "lostfound.sqlite3"
+
+    p = argparse.ArgumentParser()
+    p.add_argument("--phone", required=True, help="User phone (example: 017xxxxxxxx)")
+    p.add_argument("--db", default=str(default_db), help="Path to DB (default: ./lostfound.sqlite3)")
+    args = p.parse_args()
+
+    phone = normalize_phone(args.phone)
+    db_path = Path(args.db).resolve()
+
+    if not db_path.exists():
+        print(f"[ERROR] DB not found: {db_path}")
+        print("Run the app once to auto-create the DB, then try again.")
+        return 2
+
+    con = sqlite3.connect(str(db_path))
     cur = con.cursor()
-    cur.execute(
-        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=? LIMIT 1",
-        (table_name,),
-    )
-    return cur.fetchone() is not None
 
-
-def promote_to_office(db_path: Path, phone: str | None, user_id: int | None) -> None:
-    con = open_db_readwrite_no_create(db_path)
-
-    try:
-        if not table_exists(con, "users"):
-            raise SystemExit(
-                f"[ERROR] 'users' table not found in {db_path}.\n"
-                f"Fix: start the app once so it creates/migrates tables, then rerun this script."
-            )
-
-        cur = con.cursor()
-
-        if phone:
-            cur.execute("UPDATE users SET role='office' WHERE phone=?", (phone,))
-        else:
-            cur.execute("UPDATE users SET role='office' WHERE id=?", (user_id,))
-
-        con.commit()
-
-        # Verify
-        if phone:
-            cur.execute("SELECT id, name, phone, role FROM users WHERE phone=?", (phone,))
-        else:
-            cur.execute("SELECT id, name, phone, role FROM users WHERE id=?", (user_id,))
-
-        row = cur.fetchone()
-        if not row:
-            target = f"phone={phone}" if phone else f"id={user_id}"
-            raise SystemExit(
-                f"[ERROR] No user found for {target} in DB: {db_path}\n"
-                f"Tip: run a quick check:\n"
-                f"  SELECT id,name,phone,role FROM users;"
-            )
-
-        print("[OK] Updated user:", row)
-        print("Now log out and log in again to see office pages (/office).")
-
-    finally:
+    # Make sure users table exists
+    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+    if not cur.fetchone():
+        print("[ERROR] 'users' table not found. Your DB doesn't look initialized.")
+        print("Run the app once (it runs init_db on startup), then try again.")
         con.close()
+        return 3
 
+    cur.execute("SELECT id, name, phone, role FROM users WHERE phone=?", (phone,))
+    row = cur.fetchone()
+    if not row:
+        print(f"[ERROR] No user found with phone={phone}")
+        print("Register that phone in the app first, then re-run this script.")
+        con.close()
+        return 4
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Promote a user to office role.")
-    parser.add_argument(
-        "--db",
-        default="lostfound.sqlite3",
-        help="Path to SQLite DB (default: lostfound.sqlite3 in repo root)",
-    )
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--phone", help="User phone number to promote (exact match).")
-    group.add_argument("--user-id", type=int, help="User id to promote.")
+    user_id, name, phone_db, role = row
+    if role == "office":
+        print(f"[OK] Already office: id={user_id}, name={name}, phone={phone_db}")
+        con.close()
+        return 0
 
-    args = parser.parse_args()
-    db_path = Path(args.db).expanduser().resolve()
+    cur.execute("UPDATE users SET role='office' WHERE id=?", (user_id,))
+    con.commit()
+    con.close()
 
-    promote_to_office(db_path=db_path, phone=args.phone, user_id=args.user_id)
+    print(f"[OK] Updated to office: id={user_id}, name={name}, phone={phone_db}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
