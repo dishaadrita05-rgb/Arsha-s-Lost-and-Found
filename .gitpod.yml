@@ -1,0 +1,7 @@
+tasks:
+  - init: pip install -r requirements.txt
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+ports:
+  - port: 8000
+    onOpen: open-preview
