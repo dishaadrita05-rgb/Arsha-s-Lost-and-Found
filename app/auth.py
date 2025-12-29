@@ -2,31 +2,29 @@
 from __future__ import annotations
 
 from typing import Optional
+
 from passlib.context import CryptContext
+
+# bcrypt processes only the first 72 BYTES of a password.
+# Many libraries raise an error if it's longer than 72 bytes.
+BCRYPT_MAX_BYTES = 72
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# bcrypt has a hard limit: it only uses the first 72 BYTES.
-# Some backends throw ValueError if longer, so we enforce it safely.
-BCRYPT_MAX_BYTES = 72
-
 
 def normalize_phone(phone: str) -> str:
-    """
-    Keep only digits, remove spaces, +, etc.
-    """
+    """Keep only digits, remove spaces, +, etc."""
     return "".join(ch for ch in (phone or "") if ch.isdigit())
 
 
 def normalize_nid(nid: str) -> str:
-    """
-    Keep only digits.
-    """
+    """Keep only digits from NID input."""
     return "".join(ch for ch in (nid or "") if ch.isdigit())
 
 
 def validate_nid(nid_digits: str) -> bool:
-    return len(nid_digits) in (13, 18)
+    """Bangladesh NID: 13 or 18 digits."""
+    return bool(nid_digits) and (len(nid_digits) == 13 or len(nid_digits) == 18)
 
 
 def _check_password_length(password: str) -> None:
@@ -35,7 +33,11 @@ def _check_password_length(password: str) -> None:
 
     # IMPORTANT: count bytes, not characters (Bangla/emoji etc. can be multi-byte)
     if len(password.encode("utf-8")) > BCRYPT_MAX_BYTES:
-        raise ValueError("Password too long. Use a shorter password (max 72 bytes).")
+        pw_len = len(password.encode("utf-8"))
+        raise ValueError(
+            f"Password is too long ({pw_len} bytes). Bcrypt only supports up to 72 bytes. "
+            "Please use a shorter password. Tip: emoji/Bangla letters count as multiple bytes."
+        )
 
 
 def hash_password(password: str) -> str:
